@@ -20,6 +20,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.shared.release.versions.DefaultVersionInfo;
+import org.apache.maven.shared.release.versions.VersionInfo;
 import org.apache.maven.shared.release.versions.VersionParseException;
 import org.codehaus.plexus.components.interactivity.PrompterException;
 import org.codehaus.plexus.util.StringUtils;
@@ -58,6 +59,12 @@ public class GitFlowReleaseStartMojo extends AbstractGitFlowMojo {
     @Parameter(property = "releaseVersion", defaultValue = "")
     private String releaseVersion = "";
 
+    /**
+     *
+     */
+    @Parameter(property = "useReleaseCandidate", defaultValue = "false")
+    private boolean useReleaseCandidate = false;
+
     /** {@inheritDoc} */
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -95,6 +102,7 @@ public class GitFlowReleaseStartMojo extends AbstractGitFlowMojo {
             final String currentVersion = getCurrentProjectVersion();
 
             String defaultVersion = null;
+            String rcVersion = null;
             if (tychoBuild) {
                 defaultVersion = currentVersion;
             } else {
@@ -102,6 +110,9 @@ public class GitFlowReleaseStartMojo extends AbstractGitFlowMojo {
                 try {
                     final DefaultVersionInfo versionInfo = new DefaultVersionInfo(
                             currentVersion);
+                    if(useReleaseCandidate) {
+                        rcVersion = versionInfo.getReleaseVersionString() + "-RC";
+                    }
                     defaultVersion = versionInfo.getReleaseVersionString();
                 } catch (VersionParseException e) {
                     if (getLog().isDebugEnabled()) {
@@ -139,6 +150,14 @@ public class GitFlowReleaseStartMojo extends AbstractGitFlowMojo {
                 version = defaultVersion;
             }
 
+            if(useReleaseCandidate) {
+                // mvn versions:set -DnewVersion=... -DgenerateBackupPoms=false
+                mvnSetVersions(rcVersion);
+
+                // git commit -a -m updating versions for release
+                gitCommit(commitMessages.getReleaseCandidateMessage());
+            }
+
             String branchName = gitFlowConfig.getReleaseBranchPrefix();
             if (!sameBranchName) {
                 branchName += version;
@@ -149,12 +168,27 @@ public class GitFlowReleaseStartMojo extends AbstractGitFlowMojo {
                     gitFlowConfig.getDevelopmentBranch());
 
             // execute if version changed
-            if (!version.equals(currentVersion)) {
+            if (!version.equals(currentVersion) && !useReleaseCandidate) {
                 // mvn versions:set -DnewVersion=... -DgenerateBackupPoms=false
                 mvnSetVersions(version);
 
                 // git commit -a -m updating versions for release
                 gitCommit(commitMessages.getReleaseStartMessage());
+            }
+
+            try {
+                // git checkout -b develop
+                gitCheckout(gitFlowConfig.getDevelopmentBranch());
+
+                final VersionInfo nextVersion = new DefaultVersionInfo(
+                        currentVersion).getNextVersion();
+                // mvn versions:set -DnewVersion=... -DgenerateBackupPoms=false
+                mvnSetVersions(nextVersion.toString());
+
+                // git commit -a -m updating versions for release
+                gitCommit(commitMessages.getUpdateVersion());
+            } catch (VersionParseException e) {
+                getLog().error(e);
             }
 
             if (installProject) {

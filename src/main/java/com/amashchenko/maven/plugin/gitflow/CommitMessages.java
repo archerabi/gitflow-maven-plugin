@@ -34,6 +34,9 @@ public class CommitMessages {
     private String tagHotfixMessage;
     private String tagReleaseMessage;
 
+    private String releaseCandidateMessage;
+    private String updateVersion;
+
     public CommitMessages() {
         featureStartMessage = "update versions for feature branch";
         featureFinishMessage = "update versions for development branch";
@@ -46,6 +49,8 @@ public class CommitMessages {
 
         tagHotfixMessage = "tag hotfix";
         tagReleaseMessage = "tag release";
+        releaseCandidateMessage = "update versions to release candidate";
+        updateVersion = "increment develop snapshot";
     }
 
     /**
@@ -166,5 +171,21 @@ public class CommitMessages {
      */
     public void setTagReleaseMessage(String tagReleaseMessage) {
         this.tagReleaseMessage = tagReleaseMessage;
+    }
+
+    public String getReleaseCandidateMessage() {
+        return releaseCandidateMessage;
+    }
+
+    public void setReleaseCandidateMessage(String releaseCandidateMessage) {
+        this.releaseCandidateMessage = releaseCandidateMessage;
+    }
+
+    public String getUpdateVersion() {
+        return updateVersion;
+    }
+
+    public void setUpdateVersion(String updateVersion) {
+        this.updateVersion = updateVersion;
     }
 }
